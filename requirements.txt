@@ -1,0 +1,2 @@
+monitorcontrol
+PySide6
