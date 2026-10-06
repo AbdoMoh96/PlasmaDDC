@@ -3,6 +3,7 @@
 set -u
 
 APP_NAME="PlasmaDDC"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 PROJECT_DIR="$HOME/Scripts/PlasmaDDC"
 VENV_DIR="$PROJECT_DIR/.venv"
@@ -588,34 +589,43 @@ configure_i2c_permissions() {
 }
 
 create_project_files() {
-    title "6. Create base project files"
+    title "6. Install PlasmaDDC application files"
 
-    mkdir -p "$PROJECT_DIR/assets"
+    mkdir -p "$PROJECT_DIR/assets" "$PROJECT_DIR/docs"
 
-    write_file_confirmed "$PROJECT_DIR/requirements.txt" \
-        "PlasmaDDC Python dependencies." \
-        $'monitorcontrol\nPySide6'
-
-    write_file_confirmed "$PROJECT_DIR/app.py" \
-        "Minimal temporary application to check that PySide6 and the launcher work." \
-        $'from PySide6.QtCore import Qt\nfrom PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget\nimport sys\n\n\nclass MainWindow(QMainWindow):\n    def __init__(self):\n        super().__init__()\n        self.setWindowTitle("PlasmaDDC")\n        root = QWidget()\n        layout = QVBoxLayout(root)\n        label = QLabel(\n            "PlasmaDDC\\n\\n"\n            "Phase 1 completed.\\n"\n            "The real interface will be implemented in the next phase."\n        )\n        label.setAlignment(Qt.AlignCenter)\n        layout.addWidget(label)\n        self.setCentralWidget(root)\n        self.resize(520, 260)\n\n\ndef main():\n    app = QApplication(sys.argv)\n    window = MainWindow()\n    window.show()\n    sys.exit(app.exec())\n\n\nif __name__ == "__main__":\n    main()'
-
-    write_file_confirmed "$PROJECT_DIR/run_plasmaddc.sh" \
-        "Internal launcher: activates the virtual environment and runs the application." \
-        "#!/usr/bin/env bash
-cd \"$PROJECT_DIR\" || exit 1
-
-if [[ ! -x \"$VENV_DIR/bin/python\" ]]; then
-    echo \"The PlasmaDDC virtual environment does not exist: $VENV_DIR\"
-    exit 1
-fi
-
-source \"$VENV_DIR/bin/activate\"
-exec python \"$PROJECT_DIR/app.py\""
-
-    if [[ -f "$PROJECT_DIR/run_plasmaddc.sh" ]]; then
-        chmod +x "$PROJECT_DIR/run_plasmaddc.sh"
+    if [[ ! -f "$SCRIPT_DIR/app.py" || ! -f "$SCRIPT_DIR/backend.py" ]]; then
+        error "Real PlasmaDDC source files were not found in $SCRIPT_DIR."
+        return 1
     fi
+
+    echo "Installing the real PlasmaDDC interface from:"
+    echo "  $SCRIPT_DIR"
+    echo "to:"
+    echo "  $PROJECT_DIR"
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        info "Dry-run mode: application files are not copied."
+        return 0
+    fi
+
+    install -m 0644 "$SCRIPT_DIR/app.py" "$PROJECT_DIR/app.py"
+    install -m 0644 "$SCRIPT_DIR/backend.py" "$PROJECT_DIR/backend.py"
+    install -m 0644 "$SCRIPT_DIR/plasmaddc_cli.py" "$PROJECT_DIR/plasmaddc_cli.py"
+    install -m 0644 "$SCRIPT_DIR/requirements.txt" "$PROJECT_DIR/requirements.txt"
+
+    for optional_file in README.md pyproject.toml LICENSE .gitignore; do
+        if [[ -f "$SCRIPT_DIR/$optional_file" ]]; then
+            install -m 0644 "$SCRIPT_DIR/$optional_file" "$PROJECT_DIR/$optional_file"
+        fi
+    done
+
+    if [[ -d "$SCRIPT_DIR/docs" ]]; then
+        cp -a "$SCRIPT_DIR/docs/." "$PROJECT_DIR/docs/"
+    fi
+
+    install -m 0755 "$SCRIPT_DIR/run_plasmaddc.sh" "$PROJECT_DIR/run_plasmaddc.sh"
+
+    info "Installed the real PlasmaDDC GUI files."
 }
 
 create_python_environment() {
