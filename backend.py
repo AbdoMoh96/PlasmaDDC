@@ -10,7 +10,7 @@ from typing import Any
 
 
 # =============================================================================
-# Importación opcional de monitorcontrol
+# Optional monitorcontrol import
 # =============================================================================
 
 try:
@@ -33,7 +33,7 @@ except Exception as exc:  # pragma: no cover
 
 
 # =============================================================================
-# Códigos VCP comunes
+# Common VCP codes
 # =============================================================================
 
 VCP_BRIGHTNESS = 0x10
@@ -58,13 +58,10 @@ COMMON_VCPS: dict[str, int] = {
 
 RGB_GAIN_CODES: dict[str, int] = {
     "red": VCP_RED_GAIN,
-    "rojo": VCP_RED_GAIN,
     "r": VCP_RED_GAIN,
     "green": VCP_GREEN_GAIN,
-    "verde": VCP_GREEN_GAIN,
     "g": VCP_GREEN_GAIN,
     "blue": VCP_BLUE_GAIN,
-    "azul": VCP_BLUE_GAIN,
     "b": VCP_BLUE_GAIN,
 }
 
@@ -111,7 +108,7 @@ KNOWN_COLOR_PRESETS: dict[int, str] = {
 
 
 # =============================================================================
-# Errores propios
+# Project-specific errors
 # =============================================================================
 
 class PlasmaDDCError(RuntimeError):
@@ -145,7 +142,7 @@ class BackendMode(str, Enum):
 
 
 # =============================================================================
-# Modelos de datos
+# Data Models
 # =============================================================================
 
 @dataclass(frozen=True)
@@ -188,7 +185,7 @@ class VCPValue:
 
     def as_text(self) -> str:
         if not self.supported:
-            return f"{self.code_hex}: no soportado"
+            return f"{self.code_hex}: unsupported"
 
         if self.current is not None and self.maximum is not None:
             return f"{self.code_hex}: {self.current}/{self.maximum}"
@@ -204,7 +201,7 @@ class VCPValue:
         if self.label:
             return f"{self.code_hex}: {self.label}"
 
-        return f"{self.code_hex}: sin valor interpretado"
+        return f"{self.code_hex}: no interpreted value"
 
 
 @dataclass
@@ -220,7 +217,7 @@ class MonitorProfile:
 
 
 # =============================================================================
-# Utilidades de parseo y normalización
+# Parsing and normalization utilities
 # =============================================================================
 
 def normalize_vcp_code(code: int | str) -> int:
@@ -234,12 +231,12 @@ def normalize_vcp_code(code: int | str) -> int:
         elif text.startswith("x"):
             value = int(text[1:], 16)
         else:
-            # En ddcutil, los códigos VCP se escriben normalmente en hexadecimal.
-            # Por tanto "10" significa 0x10, no decimal 10.
+            # In ddcutil, VCP codes are usually written in hexadecimal.
+            # Therefore "10" means 0x10, not decimal 10.
             value = int(text, 16)
 
     if value < 0 or value > 0xFF:
-        raise ValueError(f"Código VCP fuera de rango: {code}")
+        raise ValueError(f"VCP code out of range: {code}")
 
     return value
 
@@ -248,11 +245,11 @@ def format_vcp_code(code: int | str) -> str:
     return f"0x{normalize_vcp_code(code):02X}"
 
 
-def normalize_percent(value: int, name: str = "valor") -> int:
+def normalize_percent(value: int, name: str = "value") -> int:
     value = int(value)
 
     if value < 0 or value > 100:
-        raise ValueError(f"{name} debe estar entre 0 y 100. Valor recibido: {value}")
+        raise ValueError(f"{name} must be between 0 and 100. Received value: {value}")
 
     return value
 
@@ -277,7 +274,7 @@ def input_source_to_int(value: int | str) -> int:
     text = str(value).strip()
 
     if not text:
-        raise ValueError("Entrada de vídeo vacía.")
+        raise ValueError("Empty video input.")
 
     upper = text.upper()
 
@@ -347,7 +344,7 @@ def parse_ddcutil_getvcp_output(code: int | str, output: str) -> VCPValue:
     if selector_match:
         selector = parse_number(selector_match.group(1))
 
-        # Intentar sacar etiqueta antes de "(sl=...)"
+        # Try extracting the label before "(sl=...)"
         after_colon = output.split("):", 1)
         if len(after_colon) == 2:
             possible_label = after_colon[1].split("(sl=", 1)[0].strip()
@@ -378,7 +375,7 @@ def parse_ddcutil_getvcp_output(code: int | str, output: str) -> VCPValue:
 def parse_ddcutil_detect_output(output: str) -> list[MonitorSummary]:
     monitors: list[MonitorSummary] = []
 
-    # Separar bloques empezando por "Display N"
+    # Split blocks starting with "Display N"
     matches = list(re.finditer(r"(?m)^Display\s+(\d+)", output))
 
     for pos, match in enumerate(matches):
@@ -445,7 +442,7 @@ def parse_ddcutil_detect_output(output: str) -> list[MonitorSummary]:
 
 
 # =============================================================================
-# Runner ddcutil
+# ddcutil Runner
 # =============================================================================
 
 class DDCUtilRunner:
@@ -458,7 +455,7 @@ class DDCUtilRunner:
 
     def require_available(self) -> None:
         if not self.available():
-            raise DDCUtilUnavailableError("ddcutil no está instalado o no está en PATH.")
+            raise DDCUtilUnavailableError("ddcutil is not installed or is not in PATH.")
 
     def _selection_args(
         self,
@@ -485,7 +482,7 @@ class DDCUtilRunner:
 
         args = args or []
 
-        # ddcutil permite display-selection-options en comandos como getvcp/setvcp.
+        # ddcutil allows display-selection-options in commands such as getvcp/setvcp.
         full_cmd = [
             str(self.path),
             command,
@@ -503,7 +500,7 @@ class DDCUtilRunner:
             )
         except subprocess.TimeoutExpired as exc:
             raise PlasmaDDCError(
-                f"ddcutil tardó demasiado ejecutando: {' '.join(full_cmd)}"
+                f"ddcutil took too long while running: {' '.join(full_cmd)}"
             ) from exc
         except OSError as exc:
             raise DDCUtilUnavailableError(str(exc)) from exc
@@ -516,15 +513,15 @@ class DDCUtilRunner:
             if (
                 "permission" in lowered
                 or "denied" in lowered
-                or "permiso" in lowered
+                or "permission" in lowered
                 or "access" in lowered
             ):
-                raise DDCPermissionError(output or "Permiso denegado usando ddcutil.")
+                raise DDCPermissionError(output or "Permission denied while using ddcutil.")
 
             if "unsupported" in lowered or "not supported" in lowered:
                 raise VCPUnsupportedError(output)
 
-            raise PlasmaDDCError(output or f"ddcutil falló: {' '.join(full_cmd)}")
+            raise PlasmaDDCError(output or f"ddcutil failed: {' '.join(full_cmd)}")
 
         return output
 
@@ -604,7 +601,7 @@ class DDCUtilRunner:
 
 
 # =============================================================================
-# Backend principal PlasmaDDC
+# Main PlasmaDDC backend
 # =============================================================================
 
 class PlasmaDDCBackend:
@@ -616,7 +613,7 @@ class PlasmaDDCBackend:
         self._monitorcontrol_reliable: dict[int, bool] = {}
 
     # -------------------------------------------------------------------------
-    # Disponibilidad
+    # Availability
     # -------------------------------------------------------------------------
 
     def ddcutil_available(self) -> bool:
@@ -628,11 +625,11 @@ class PlasmaDDCBackend:
     def require_monitorcontrol(self) -> None:
         if not self.monitorcontrol_available():
             raise MonitorControlUnavailableError(
-                f"monitorcontrol no está disponible: {MONITORCONTROL_IMPORT_ERROR}"
+                f"monitorcontrol is not available: {MONITORCONTROL_IMPORT_ERROR}"
             )
 
     # -------------------------------------------------------------------------
-    # Detección de monitores
+    # Monitor detection
     # -------------------------------------------------------------------------
 
     def refresh_monitors(self) -> list[MonitorSummary]:
@@ -656,8 +653,8 @@ class PlasmaDDCBackend:
         if self._ddc_monitors:
             return self._ddc_monitors
 
-        # Fallback: si ddcutil detect no dio bloques pero monitorcontrol sí detecta,
-        # creamos summaries mínimos.
+        # Fallback: if ddcutil detect did not return blocks but monitorcontrol detects monitors,
+        # create minimal summaries.
         if self._monitorcontrol_monitors:
             return [
                 MonitorSummary(
@@ -704,7 +701,7 @@ class PlasmaDDCBackend:
         monitors = self.list_monitors()
 
         if index < 0 or index >= len(monitors):
-            raise MonitorNotFoundError(f"No existe el monitor con índice {index}")
+            raise MonitorNotFoundError(f"No monitor exists with index {index}")
 
         return monitors[index]
 
@@ -733,7 +730,7 @@ class PlasmaDDCBackend:
 
         if index < 0 or index >= len(self._monitorcontrol_monitors):
             raise MonitorNotFoundError(
-                f"monitorcontrol no tiene monitor con índice {index}"
+                f"monitorcontrol has no monitor with index {index}"
             )
 
         return self._monitorcontrol_monitors[index]
@@ -747,18 +744,18 @@ class PlasmaDDCBackend:
                 return method(*args)
         except VCPPermissionError as exc:
             raise DDCPermissionError(
-                "monitorcontrol no tiene permisos sobre DDC/CI."
+                "monitorcontrol has no permissions for DDC/CI."
             ) from exc
         except (VCPError, VCPIOError) as exc:
             raise VCPUnsupportedError(
-                f"monitorcontrol falló en {method_name}: {exc}"
+                f"monitorcontrol failed in {method_name}: {exc}"
             ) from exc
         except AttributeError as exc:
             raise PlasmaDDCError(
-                f"monitorcontrol no tiene el método {method_name}"
+                f"monitorcontrol has no method {method_name}"
             ) from exc
         except Exception as exc:
-            raise PlasmaDDCError(f"monitorcontrol falló en {method_name}: {exc}") from exc
+            raise PlasmaDDCError(f"monitorcontrol failed in {method_name}: {exc}") from exc
 
     def test_monitorcontrol_reliability(self, index: int = 0) -> bool:
         if not self.monitorcontrol_available():
@@ -779,7 +776,7 @@ class PlasmaDDCBackend:
         return self._monitorcontrol_reliable[index]
 
     # -------------------------------------------------------------------------
-    # Lectura capabilities/getvcp all
+    # Reading capabilities/getvcp all
     # -------------------------------------------------------------------------
 
     def detect_text(self) -> str:
@@ -849,26 +846,26 @@ class PlasmaDDCBackend:
         return profile
 
     # -------------------------------------------------------------------------
-    # API de alto nivel basada principalmente en ddcutil
+    # High-level API based mainly on ddcutil
     # -------------------------------------------------------------------------
 
     def get_brightness(self, index: int = 0) -> VCPValue:
         return self.get_vcp(index, VCP_BRIGHTNESS)
 
     def set_brightness(self, index: int, value: int) -> str:
-        return self.set_vcp(index, VCP_BRIGHTNESS, normalize_percent(value, "brillo"))
+        return self.set_vcp(index, VCP_BRIGHTNESS, normalize_percent(value, "brightness"))
 
     def get_contrast(self, index: int = 0) -> VCPValue:
         return self.get_vcp(index, VCP_CONTRAST)
 
     def set_contrast(self, index: int, value: int) -> str:
-        return self.set_vcp(index, VCP_CONTRAST, normalize_percent(value, "contraste"))
+        return self.set_vcp(index, VCP_CONTRAST, normalize_percent(value, "contrast"))
 
     def get_volume(self, index: int = 0) -> VCPValue:
         return self.get_vcp(index, VCP_AUDIO_VOLUME)
 
     def set_volume(self, index: int, value: int) -> str:
-        return self.set_vcp(index, VCP_AUDIO_VOLUME, normalize_percent(value, "volumen"))
+        return self.set_vcp(index, VCP_AUDIO_VOLUME, normalize_percent(value, "volume"))
 
     def get_color_preset(self, index: int = 0) -> VCPValue:
         return self.get_vcp(index, VCP_COLOR_PRESET)
@@ -883,8 +880,8 @@ class PlasmaDDCBackend:
     def set_input_source(self, index: int, value: int | str) -> str:
         raw_value = input_source_to_int(value)
 
-        # Con Input Source 0x60 algunos monitores cambian de entrada y ya no se
-        # puede verificar el valor desde la misma señal. Por eso usamos no_verify.
+        # With Input Source 0x60, some monitors switch inputs and can no longer
+        # the value can be verified from the same signal. That is why no_verify is used.
         return self.set_vcp(
             index=index,
             code=VCP_INPUT_SOURCE,
@@ -896,7 +893,7 @@ class PlasmaDDCBackend:
         key = color.strip().lower()
 
         if key not in RGB_GAIN_CODES:
-            raise ValueError(f"Color RGB no válido: {color}")
+            raise ValueError(f"Invalid RGB color: {color}")
 
         return self.get_vcp(index, RGB_GAIN_CODES[key])
 
@@ -904,17 +901,17 @@ class PlasmaDDCBackend:
         key = color.strip().lower()
 
         if key not in RGB_GAIN_CODES:
-            raise ValueError(f"Color RGB no válido: {color}")
+            raise ValueError(f"Invalid RGB color: {color}")
 
         return self.set_vcp(
             index=index,
             code=RGB_GAIN_CODES[key],
-            value=normalize_percent(value, f"ganancia {color}"),
+            value=normalize_percent(value, f"gain {color}"),
         )
 
     # -------------------------------------------------------------------------
-    # API auxiliar monitorcontrol, por si queremos compararla o usarla en casos
-    # donde funcione mejor que ddcutil.
+    # Auxiliary monitorcontrol API, in case we want to compare it or use it in cases
+    # where it works better than ddcutil.
     # -------------------------------------------------------------------------
 
     def get_brightness_monitorcontrol(self, index: int = 0) -> int:
@@ -949,22 +946,22 @@ class PlasmaDDCBackend:
 def smoke_test() -> int:
     backend = PlasmaDDCBackend()
 
-    print("PlasmaDDC backend v2 - prueba rápida")
+    print("PlasmaDDC backend v2 - quick test")
     print()
-    print("Backend principal: ddcutil")
-    print("Backend auxiliar: monitorcontrol")
+    print("Main backend: ddcutil")
+    print("Auxiliary backend: monitorcontrol")
     print()
-    print("ddcutil disponible:", backend.ddcutil_available())
-    print("monitorcontrol disponible:", backend.monitorcontrol_available())
+    print("ddcutil available:", backend.ddcutil_available())
+    print("monitorcontrol available:", backend.monitorcontrol_available())
     print()
 
     monitors = backend.refresh_monitors()
 
     if not monitors:
-        print("No se han detectado monitores.")
+        print("No monitors detected.")
         return 1
 
-    print(f"Monitores detectados por PlasmaDDC: {len(monitors)}")
+    print(f"Monitors detected by PlasmaDDC: {len(monitors)}")
 
     for monitor in monitors:
         print()
@@ -976,10 +973,10 @@ def smoke_test() -> int:
         print(f"  model_name: {monitor.model_name}")
 
         mc_ok = backend.monitorcontrol_reliable(monitor.index)
-        print(f"  monitorcontrol fiable para VCP básicos: {mc_ok}")
+        print(f"  monitorcontrol reliable for basic VCPs: {mc_ok}")
 
         print()
-        print("  VCPs comunes vía ddcutil:")
+        print("  Common VCPs via ddcutil:")
 
         for key, code in COMMON_VCPS.items():
             try:
@@ -987,13 +984,13 @@ def smoke_test() -> int:
                 print(f"    {key:14s} {value.as_text()}")
 
                 if key == "input_source" and value.selector is not None:
-                    print(f"                  etiqueta normalizada: {input_source_label(value.selector)}")
+                    print(f"                  normalized label: {input_source_label(value.selector)}")
 
                 if key == "color_preset" and value.selector is not None:
-                    print(f"                  etiqueta normalizada: {color_preset_label(value.selector)}")
+                    print(f"                  normalized label: {color_preset_label(value.selector)}")
 
             except Exception as exc:
-                print(f"    {key:14s} no disponible ({exc})")
+                print(f"    {key:14s} unavailable ({exc})")
 
     return 0
 

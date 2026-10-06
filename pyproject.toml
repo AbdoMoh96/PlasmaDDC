@@ -10,8 +10,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/TU_USUARIO/PlasmaDDC"
-Repository = "https://github.com/TU_USUARIO/PlasmaDDC"
+Homepage = "https://github.com/AbdoMoh96/PlasmaDDC"
+Repository = "https://github.com/AbdoMoh96/PlasmaDDC"
 
 [tool.ruff]
 line-length = 100

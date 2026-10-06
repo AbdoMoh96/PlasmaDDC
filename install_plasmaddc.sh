@@ -22,13 +22,13 @@ for arg in "$@"; do
             DRY_RUN=1
             ;;
         -h|--help)
-            echo "Uso: $0 [--dry-run]"
+            echo "Usage: $0 [--dry-run]"
             echo
-            echo "  --dry-run   Muestra lo que haría sin modificar el sistema."
+            echo "  --dry-run   Shows what would be done without changing the system."
             exit 0
             ;;
         *)
-            echo "Argumento no reconocido: $arg"
+            echo "Unrecognized argument: $arg"
             exit 1
             ;;
     esac
@@ -37,7 +37,7 @@ done
 mkdir -p "$PROJECT_DIR"
 
 touch "$LOG_FILE" 2>/dev/null || {
-    echo "No se puede escribir el log en $LOG_FILE"
+    echo "Cannot write the log to $LOG_FILE"
     exit 1
 }
 
@@ -60,8 +60,8 @@ info() {
 }
 
 warn() {
-    echo "AVISO: $*"
-    log "AVISO: $*"
+    echo "WARNING: $*"
+    log "WARNING: $*"
 }
 
 error() {
@@ -75,16 +75,16 @@ ask_yes_no() {
 
     while true; do
         echo
-        read -r -p "$question [s/N]: " answer
+        read -r -p "$question [y/N]: " answer
         case "$answer" in
-            s|S|si|SI|sí|SÍ|y|Y|yes|YES)
+            y|Y|yes|YES)
                 return 0
                 ;;
             ""|n|N|no|NO)
                 return 1
                 ;;
             *)
-                echo "Responde s o n."
+                echo "Answer y or n."
                 ;;
         esac
     done
@@ -103,36 +103,36 @@ safe_state_key() {
 
 state_init() {
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se crea archivo de estado."
+        info "Dry-run mode: no state file is created."
         return 0
     fi
 
     if [[ -f "$STATE_FILE" ]]; then
-        warn "Ya existe un archivo de estado:"
+        warn "A state file already exists:"
         warn "$STATE_FILE"
-        warn "Puede indicar una instalación anterior."
+        warn "It may indicate a previous installation."
 
-        if ask_yes_no "¿Quieres sobrescribir el estado de instalación?"; then
+        if ask_yes_no "Do you want to overwrite the installation state?"; then
             cp "$STATE_FILE" "$STATE_FILE.bak.$(date '+%Y%m%d-%H%M%S')" 2>/dev/null || true
-            info "Copia de seguridad del estado anterior creada."
+            info "Backup of the previous state created."
         else
-            warn "No se sobrescribirá el estado."
-            warn "El rollback inteligente quedará desactivado en esta ejecución."
+            warn "The state will not be overwritten."
+            warn "Smart rollback will be disabled for this run."
             STATE_TRACKING_ENABLED=0
             return 0
         fi
     fi
 
     cat > "$STATE_FILE" <<EOF
-# Estado de instalación de PlasmaDDC
-# Generado automáticamente. No editar salvo que sepas lo que haces.
+# PlasmaDDC installation state
+# Generated automatically. Do not edit unless you know what you are doing.
 STATE_VERSION=1.2
 INSTALL_DATE=$(date -Iseconds)
 PROJECT_DIR=$PROJECT_DIR
 USER_NAME=$USER
 EOF
 
-    info "Archivo de estado inicializado: $STATE_FILE"
+    info "State file initialized: $STATE_FILE"
 }
 
 state_set() {
@@ -249,32 +249,32 @@ run_cmd() {
     shift
 
     echo
-    echo "Operación propuesta:"
+    echo "Proposed operation:"
     echo "  $description"
     echo
-    echo "Comando:"
+    echo "Command:"
     printf '  %q' "$@"
     echo
 
-    log "OPERACIÓN PROPUESTA: $description"
+    log "PROPOSED OPERATION: $description"
     log "COMANDO: $*"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se ejecuta el comando."
+        info "Dry-run mode: the command is not executed."
         return 0
     fi
 
-    if ask_yes_no "¿Quieres ejecutar esta operación?"; then
+    if ask_yes_no "Do you want to run this operation?"; then
         "$@" 2>&1 | tee -a "$LOG_FILE"
         local status=${PIPESTATUS[0]}
 
         if [[ "$status" -ne 0 ]]; then
-            warn "El comando terminó con código $status."
+            warn "The command ended with code $status."
         fi
 
         return "$status"
     else
-        warn "Operación omitida por el usuario."
+        warn "Operation skipped by user."
         return 1
     fi
 }
@@ -285,27 +285,27 @@ write_file_confirmed() {
     local content="$3"
 
     echo
-    echo "Archivo propuesto:"
+    echo "Proposed file:"
     echo "  $file"
     echo
     echo "$description"
 
     if [[ -f "$file" ]]; then
-        warn "El archivo ya existe. No se sobrescribirá sin confirmación."
+        warn "The file already exists. It will not be overwritten without confirmation."
     fi
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se escribe $file."
+        info "Dry-run mode: not writing $file."
         return 0
     fi
 
-    if ask_yes_no "¿Quieres crear o actualizar este archivo?"; then
+    if ask_yes_no "Do you want to create or update this file?"; then
         mkdir -p "$(dirname "$file")"
         printf '%s\n' "$content" > "$file"
-        info "Archivo escrito: $file"
+        info "File written: $file"
         return 0
     else
-        warn "No se ha modificado $file."
+        warn "Not modified $file."
         return 1
     fi
 }
@@ -322,7 +322,7 @@ install_packages_group() {
 
     case "$pm" in
         apt)
-            run_cmd "Actualizar la lista de paquetes antes de instalar" sudo apt update || true
+            run_cmd "Update package list before installing" sudo apt update || true
             run_cmd "$description: ${packages[*]}" sudo apt install -y "${packages[@]}"
             ;;
         dnf)
@@ -335,8 +335,8 @@ install_packages_group() {
             run_cmd "$description: ${packages[*]}" sudo zypper install -y "${packages[@]}"
             ;;
         *)
-            error "No se ha detectado un gestor de paquetes soportado."
-            warn "Instala manualmente: ${packages[*]}"
+            error "No supported package manager was detected."
+            warn "Install manually: ${packages[*]}"
             return 1
             ;;
     esac
@@ -347,12 +347,12 @@ capture_initial_state() {
     shift
     local packages=("$@")
 
-    title "Estado previo para rollback inteligente"
+    title "Previous state for smart rollback"
 
     state_init
 
     if [[ "$STATE_TRACKING_ENABLED" -ne 1 ]]; then
-        warn "Seguimiento de estado desactivado."
+        warn "State tracking disabled."
         return 0
     fi
 
@@ -370,7 +370,7 @@ capture_initial_state() {
         state_set "PKG_${key}_BEFORE" "$(package_installed_bool "$pm" "$package")"
     done
 
-    info "Estado previo guardado en $STATE_FILE"
+    info "Previous state saved in $STATE_FILE"
 }
 
 capture_final_state() {
@@ -379,10 +379,10 @@ capture_final_state() {
     local packages=("$@")
     local installed_by_plasmaddc=()
 
-    title "Estado final para rollback inteligente"
+    title "Final state for smart rollback"
 
     if [[ "$STATE_TRACKING_ENABLED" -ne 1 || "$DRY_RUN" -eq 1 ]]; then
-        info "No se actualiza estado final."
+        info "Final state is not updated."
         return 0
     fi
 
@@ -439,174 +439,174 @@ capture_final_state() {
 
     state_set "PACKAGES_INSTALLED_BY_PLASMADDC" "${installed_by_plasmaddc[*]}"
 
-    info "Estado final actualizado en $STATE_FILE"
+    info "Final state updated in $STATE_FILE"
 }
 
 check_i2c_devices() {
     if ls /dev/i2c-* >/dev/null 2>&1; then
-        info "Se han encontrado dispositivos /dev/i2c-*:"
+        info "Found /dev/i2c-* devices:"
 
         ls -l /dev/i2c-* | tee -a "$LOG_FILE"
         return 0
     fi
 
-    warn "No se han encontrado dispositivos /dev/i2c-*."
-    warn "Puede que el módulo i2c-dev no esté cargado."
+    warn "No /dev/i2c-* devices found."
+    warn "The i2c-dev module may not be loaded."
 
-    run_cmd "Cargar el módulo i2c-dev para exponer /dev/i2c-*" sudo modprobe i2c-dev || true
+    run_cmd "Load the i2c-dev module to expose /dev/i2c-*" sudo modprobe i2c-dev || true
 
     if ls /dev/i2c-* >/dev/null 2>&1; then
-        info "Ahora aparecen dispositivos /dev/i2c-*:"
+        info "/dev/i2c-* devices now appear:"
 
         ls -l /dev/i2c-* | tee -a "$LOG_FILE"
 
         echo
-        echo "Se puede hacer persistente la carga del módulo i2c-dev creando:"
+        echo "The i2c-dev module load can be made persistent by creating:"
         echo "  $MODULE_LOAD_FILE"
         echo
-        echo "Contenido propuesto:"
+        echo "Proposed content:"
         echo "  i2c-dev"
 
         if [[ "$DRY_RUN" -eq 1 ]]; then
-            info "Modo dry-run: no se crea configuración persistente para i2c-dev."
-        elif ask_yes_no "¿Quieres hacer persistente la carga del módulo i2c-dev?"; then
+            info "Dry-run mode: persistent i2c-dev configuration is not created."
+        elif ask_yes_no "Do you want to make loading the i2c-dev module persistent?"; then
             echo "i2c-dev" | sudo tee "$MODULE_LOAD_FILE" >/dev/null
-            info "Creado $MODULE_LOAD_FILE"
+            info "Created $MODULE_LOAD_FILE"
         else
-            info "No se crea carga persistente de i2c-dev."
+            info "Persistent i2c-dev loading is not created."
         fi
 
         return 0
     fi
 
-    warn "Siguen sin aparecer dispositivos /dev/i2c-* después de modprobe."
+    warn "/dev/i2c-* devices still do not appear after modprobe."
     return 1
 }
 
 try_ddcutil_detect() {
     if ! command_exists ddcutil; then
-        error "ddcutil no está instalado o no está en PATH."
+        error "ddcutil is not installed or is not in PATH."
         return 1
     fi
 
     echo
-    echo "Prueba sin sudo:"
+    echo "Test without sudo:"
     echo "  ddcutil detect"
     echo
 
     if ddcutil detect 2>&1 | tee -a "$LOG_FILE"; then
-        info "ddcutil detect funciona sin sudo."
+        info "ddcutil detect works without sudo."
         return 0
     fi
 
-    warn "ddcutil detect no ha funcionado sin sudo."
-    warn "Ahora se ofrece probar con sudo."
-    warn "Si con sudo funciona, casi seguro falta configurar permisos sobre /dev/i2c-*."
+    warn "ddcutil detect did not work without sudo."
+    warn "Testing with sudo is now offered."
+    warn "If it works with sudo, /dev/i2c-* permissions almost certainly need configuration."
 
-    if run_cmd "Probar detección de monitor con sudo" sudo ddcutil detect; then
-        info "ddcutil detect funciona con sudo."
-        warn "Conviene configurar permisos i2c para que funcione como usuario normal."
+    if run_cmd "Test monitor detection with sudo" sudo ddcutil detect; then
+        info "ddcutil detect works with sudo."
+        warn "Configure i2c permissions so it works as a normal user."
         return 2
     fi
 
-    warn "ddcutil detect tampoco ha funcionado con sudo."
-    warn "Posibles causas:"
-    warn "- DDC/CI desactivado en el menú OSD del monitor."
-    warn "- Cable, adaptador, dock o KVM problemático."
-    warn "- Monitor incompatible o implementación DDC/CI limitada."
-    warn "- Driver gráfico que no expone I2C."
+    warn "ddcutil detect did not work with sudo either."
+    warn "Possible causes:"
+    warn "- DDC/CI disabled in the monitor OSD menu."
+    warn "- Problematic cable, adapter, dock, or KVM."
+    warn "- Incompatible monitor or limited DDC/CI implementation."
+    warn "- Graphics driver that does not expose I2C."
     return 1
 }
 
 show_ddc_capabilities() {
     local use_sudo="$1"
 
-    title "4B. Lectura de capacidades del monitor"
+    title "4B. Monitor capability reading"
 
     if ! command_exists ddcutil; then
-        warn "ddcutil no está disponible. Se omite la lectura de capacidades."
+        warn "ddcutil is not available. Capability reading is skipped."
         return 1
     fi
 
-    echo "Se puede leer qué controles VCP anuncia el monitor."
-    echo "Esto ayuda a saber si soporta brillo, contraste, volumen, RGB, temperatura de color o cambio de entrada."
+    echo "You can read which VCP controls the monitor advertises."
+    echo "This helps determine whether it supports brightness, contrast, volume, RGB, color temperature, or input switching."
 
     if [[ "$use_sudo" == "yes" ]]; then
-        run_cmd "Leer capacidades del monitor con sudo" sudo ddcutil capabilities || true
-        run_cmd "Leer todos los VCP actuales con sudo" sudo ddcutil getvcp all || true
+        run_cmd "Read monitor capabilities with sudo" sudo ddcutil capabilities || true
+        run_cmd "Read all current VCPs with sudo" sudo ddcutil getvcp all || true
     else
-        run_cmd "Leer capacidades del monitor sin sudo" ddcutil capabilities || true
-        run_cmd "Leer todos los VCP actuales sin sudo" ddcutil getvcp all || true
+        run_cmd "Read monitor capabilities without sudo" ddcutil capabilities || true
+        run_cmd "Read all current VCPs without sudo" ddcutil getvcp all || true
     fi
 }
 
 configure_i2c_permissions() {
-    title "5. Configuración segura de permisos I2C"
+    title "5. Safe I2C permissions configuration"
 
-    echo "PlasmaDDC no debe ejecutarse como root."
-    echo "La opción segura será usar el grupo i2c y una regla udev con permisos 0660."
-    echo "No se usará chmod 666."
+    echo "PlasmaDDC should not be run as root."
+    echo "The safe option is to use the i2c group and a udev rule with 0660 permissions."
+    echo "chmod 666 will not be used."
 
     if getent group i2c >/dev/null 2>&1; then
-        info "El grupo i2c ya existe."
+        info "The i2c group already exists."
     else
-        run_cmd "Crear el grupo i2c" sudo groupadd -f i2c || true
+        run_cmd "Create the i2c group" sudo groupadd -f i2c || true
     fi
 
     if id -nG "$USER" 2>/dev/null | tr ' ' '\n' | grep -qx i2c; then
-        info "El usuario $USER ya pertenece al grupo i2c."
+        info "The user $USER already belongs to the i2c group."
     else
-        run_cmd "Añadir el usuario $USER al grupo i2c" sudo usermod -aG i2c "$USER" || true
-        warn "Tendrás que cerrar sesión y volver a entrar para activar este cambio."
+        run_cmd "Add user $USER to the i2c group" sudo usermod -aG i2c "$USER" || true
+        warn "You must log out and log back in to activate this change."
     fi
 
     local rule_content='KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"'
 
     echo
-    echo "Regla udev propuesta:"
+    echo "Proposed udev rule:"
     echo "  $UDEV_RULE_FILE"
     echo
-    echo "Contenido:"
+    echo "Content:"
     echo "  $rule_content"
 
     if [[ -f "$UDEV_RULE_FILE" ]]; then
-        warn "La regla ya existe. Contenido actual:"
+        warn "The rule already exists. Current content:"
         sudo cat "$UDEV_RULE_FILE" | tee -a "$LOG_FILE" || true
     fi
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se crea ni modifica la regla udev."
-    elif ask_yes_no "¿Quieres crear o actualizar la regla udev de PlasmaDDC?"; then
+        info "Dry-run mode: the udev rule is not created or modified."
+    elif ask_yes_no "Do you want to create or update the PlasmaDDC udev rule?"; then
         echo "$rule_content" | sudo tee "$UDEV_RULE_FILE" >/dev/null
-        info "Regla udev escrita en $UDEV_RULE_FILE"
+        info "Udev rule written to $UDEV_RULE_FILE"
     else
-        warn "No se ha creado/modificado la regla udev."
+        warn "The udev rule was not created/modified."
     fi
 
-    run_cmd "Recargar reglas udev" sudo udevadm control --reload-rules || true
-    run_cmd "Aplicar reglas udev a los dispositivos actuales" sudo udevadm trigger || true
+    run_cmd "Reload udev rules" sudo udevadm control --reload-rules || true
+    run_cmd "Apply udev rules to current devices" sudo udevadm trigger || true
 }
 
 create_project_files() {
-    title "6. Crear archivos base del proyecto"
+    title "6. Create base project files"
 
     mkdir -p "$PROJECT_DIR/assets"
 
     write_file_confirmed "$PROJECT_DIR/requirements.txt" \
-        "Dependencias Python de PlasmaDDC." \
+        "PlasmaDDC Python dependencies." \
         $'monitorcontrol\nPySide6'
 
     write_file_confirmed "$PROJECT_DIR/app.py" \
-        "Aplicación temporal mínima para comprobar que PySide6 y el lanzador funcionan." \
-        $'from PySide6.QtCore import Qt\nfrom PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget\nimport sys\n\n\nclass MainWindow(QMainWindow):\n    def __init__(self):\n        super().__init__()\n        self.setWindowTitle("PlasmaDDC")\n        root = QWidget()\n        layout = QVBoxLayout(root)\n        label = QLabel(\n            "PlasmaDDC\\n\\n"\n            "Fase 1 completada.\\n"\n            "La interfaz real se programará en la siguiente fase."\n        )\n        label.setAlignment(Qt.AlignCenter)\n        layout.addWidget(label)\n        self.setCentralWidget(root)\n        self.resize(520, 260)\n\n\ndef main():\n    app = QApplication(sys.argv)\n    window = MainWindow()\n    window.show()\n    sys.exit(app.exec())\n\n\nif __name__ == "__main__":\n    main()'
+        "Minimal temporary application to check that PySide6 and the launcher work." \
+        $'from PySide6.QtCore import Qt\nfrom PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget\nimport sys\n\n\nclass MainWindow(QMainWindow):\n    def __init__(self):\n        super().__init__()\n        self.setWindowTitle("PlasmaDDC")\n        root = QWidget()\n        layout = QVBoxLayout(root)\n        label = QLabel(\n            "PlasmaDDC\\n\\n"\n            "Phase 1 completed.\\n"\n            "The real interface will be implemented in the next phase."\n        )\n        label.setAlignment(Qt.AlignCenter)\n        layout.addWidget(label)\n        self.setCentralWidget(root)\n        self.resize(520, 260)\n\n\ndef main():\n    app = QApplication(sys.argv)\n    window = MainWindow()\n    window.show()\n    sys.exit(app.exec())\n\n\nif __name__ == "__main__":\n    main()'
 
     write_file_confirmed "$PROJECT_DIR/run_plasmaddc.sh" \
-        "Lanzador interno: activa el entorno virtual y ejecuta la aplicación." \
+        "Internal launcher: activates the virtual environment and runs the application." \
         "#!/usr/bin/env bash
 cd \"$PROJECT_DIR\" || exit 1
 
 if [[ ! -x \"$VENV_DIR/bin/python\" ]]; then
-    echo \"No existe el entorno virtual de PlasmaDDC: $VENV_DIR\"
+    echo \"The PlasmaDDC virtual environment does not exist: $VENV_DIR\"
     exit 1
 fi
 
@@ -619,33 +619,33 @@ exec python \"$PROJECT_DIR/app.py\""
 }
 
 create_python_environment() {
-    title "7. Crear entorno virtual Python e instalar dependencias"
+    title "7. Create Python virtual environment and install dependencies"
 
     if [[ -d "$VENV_DIR" ]]; then
-        info "El entorno virtual ya existe: $VENV_DIR"
+        info "The virtual environment already exists: $VENV_DIR"
     else
-        run_cmd "Crear entorno virtual Python en $VENV_DIR" python3 -m venv "$VENV_DIR" || true
+        run_cmd "Create Python virtual environment in $VENV_DIR" python3 -m venv "$VENV_DIR" || true
     fi
 
     if [[ -x "$VENV_DIR/bin/pip" ]]; then
-        run_cmd "Instalar dependencias Python desde requirements.txt" "$VENV_DIR/bin/pip" install -r "$PROJECT_DIR/requirements.txt" || true
+        run_cmd "Install Python dependencies from requirements.txt" "$VENV_DIR/bin/pip" install -r "$PROJECT_DIR/requirements.txt" || true
     else
-        warn "No existe pip dentro del entorno virtual. No se pueden instalar dependencias Python."
+        warn "pip does not exist inside the virtual environment. Python dependencies cannot be installed."
     fi
 }
 
 test_monitorcontrol() {
-    title "8. Prueba básica de monitorcontrol"
+    title "8. Basic monitorcontrol test"
 
     if [[ ! -x "$VENV_DIR/bin/python" ]]; then
-        warn "No existe el Python del entorno virtual. Se omite la prueba."
+        warn "The virtual-environment Python does not exist. The test is skipped."
         return 1
     fi
 
-    echo "Se probará que Python pueda importar monitorcontrol y detectar monitores."
+    echo "Python will be tested for importing monitorcontrol and detecting monitors."
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se ejecuta la prueba Python."
+        info "Dry-run mode: the Python test is not run."
         return 0
     fi
 
@@ -654,30 +654,30 @@ try:
     from monitorcontrol import get_monitors
 
     monitors = get_monitors()
-    print(f"Monitores detectados por monitorcontrol: {len(monitors)}")
+    print(f"Monitors detected by monitorcontrol: {len(monitors)}")
 
     for i, monitor in enumerate(monitors):
         print(f"Monitor {i}: {monitor}")
         try:
             with monitor:
-                print("  Brillo:", monitor.get_luminance())
+                print("  Brightness:", monitor.get_luminance())
         except Exception as exc:
-            print("  No se pudo leer brillo:", exc)
+            print("  Could not read brightness:", exc)
 
 except Exception as exc:
-    print("Error importando o usando monitorcontrol:", exc)
+    print("Error importing or using monitorcontrol:", exc)
 PY
 }
 
 create_desktop_launcher() {
-    title "9. Crear lanzador en el menú de aplicaciones"
+    title "9. Create launcher in the application menu"
 
     local desktop_content
     desktop_content="[Desktop Entry]
 Type=Application
 Name=PlasmaDDC
 GenericName=Monitor DDC/CI Control
-Comment=Control de monitor mediante DDC/CI
+Comment=Monitor control through DDC/CI
 Exec=$PROJECT_DIR/run_plasmaddc.sh
 Icon=preferences-desktop-display
 Terminal=false
@@ -685,7 +685,7 @@ Categories=Settings;HardwareSettings;Qt;
 StartupNotify=true"
 
     write_file_confirmed "$DESKTOP_FILE" \
-        "Lanzador estándar .desktop para que PlasmaDDC aparezca en el menú de KDE Plasma y otros escritorios compatibles." \
+        "Standard .desktop launcher so PlasmaDDC appears in the KDE Plasma menu and other compatible desktops." \
         "$desktop_content"
 
     if [[ -f "$DESKTOP_FILE" ]]; then
@@ -693,46 +693,46 @@ StartupNotify=true"
     fi
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        info "Modo dry-run: no se actualizan cachés de escritorio."
+        info "Dry-run mode: desktop caches are not updated."
         return 0
     fi
 
     if command_exists update-desktop-database; then
         update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
-        info "Ejecutado update-desktop-database."
+        info "Ran update-desktop-database."
     fi
 
     if command_exists kbuildsycoca6; then
         kbuildsycoca6 >/dev/null 2>&1 || true
-        info "Ejecutado kbuildsycoca6."
+        info "Ran kbuildsycoca6."
     elif command_exists kbuildsycoca5; then
         kbuildsycoca5 >/dev/null 2>&1 || true
-        info "Ejecutado kbuildsycoca5."
+        info "Ran kbuildsycoca5."
     fi
 }
 
 show_summary() {
-    title "10. Resumen final"
+    title "10. Final summary"
 
-    echo "Directorio del proyecto:"
+    echo "Project directory:"
     echo "  $PROJECT_DIR"
     echo
-    echo "Log de instalación:"
+    echo "Installation log:"
     echo "  $LOG_FILE"
     echo
-    echo "Archivo de estado:"
+    echo "State file:"
     echo "  $STATE_FILE"
     echo
-    echo "Regla udev:"
+    echo "Udev rule:"
     echo "  $UDEV_RULE_FILE"
     echo
-    echo "Archivo persistente i2c-dev:"
+    echo "Persistent i2c-dev file:"
     echo "  $MODULE_LOAD_FILE"
     echo
-    echo "Lanzador de menú:"
+    echo "Menu launcher:"
     echo "  $DESKTOP_FILE"
     echo
-    echo "Comandos de comprobación recomendados:"
+    echo "Recommended check commands:"
     echo "  groups"
     echo "  ls -l /dev/i2c-*"
     echo "  ddcutil detect"
@@ -741,40 +741,40 @@ show_summary() {
     echo
 
     if ! id -nG "$USER" 2>/dev/null | tr ' ' '\n' | grep -qx i2c; then
-        warn "IMPORTANTE: si se añadió tu usuario al grupo i2c, cierra sesión y vuelve a entrar."
+        warn "IMPORTANT: if your user was added to the i2c group, log out and log back in."
     fi
 
     if [[ -f "$STATE_FILE" ]]; then
         echo
-        echo "Resumen del estado guardado:"
+        echo "Saved state summary:"
         grep -E '^(STATE_VERSION|INSTALL_DATE|PROJECT_DIR|PACKAGES_INSTALLED_BY_PLASMADDC|USER_ADDED_TO_I2C_BY_PLASMADDC|UDEV_RULE_CREATED_BY_PLASMADDC|DESKTOP_FILE_CREATED_BY_PLASMADDC|VENV_CREATED_BY_PLASMADDC)=' "$STATE_FILE" 2>/dev/null || true
     fi
 
-    info "Fase 1.2 finalizada."
+    info "Phase 1.2 completed."
 }
 
 main() {
-    title "Instalador seguro de $APP_NAME - Fase 1.2"
+    title "Safe installer for $APP_NAME - Phase 1.2"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        warn "Modo dry-run activado. Se mostrará lo que se haría, pero no se cambiará el sistema."
+        warn "Dry-run mode enabled. What would be done will be shown, but the system will not be changed."
     fi
 
-    info "Directorio del proyecto: $PROJECT_DIR"
+    info "Project directory: $PROJECT_DIR"
     info "Log: $LOG_FILE"
 
-    title "1. Detección del sistema"
+    title "1. System detection"
 
     local pm
     pm="$(detect_package_manager)"
-    info "Gestor de paquetes detectado: $pm"
+    info "Detected package manager: $pm"
 
     if [[ -f /etc/os-release ]]; then
-        info "Información de distribución:"
+        info "Distribution information:"
         grep -E '^(NAME|VERSION|ID|VERSION_CODENAME)=' /etc/os-release | tee -a "$LOG_FILE" || true
     fi
 
-    title "2. Comprobación de paquetes necesarios"
+    title "2. Required package check"
 
     local mandatory_packages=()
     local optional_packages=()
@@ -791,45 +791,45 @@ main() {
         pacman)
             mandatory_packages=(ddcutil i2c-tools python python-pip)
             optional_packages=()
-            warn "En Arch/Manjaro ddcui puede no estar en repositorios oficiales; se omite en esta fase."
+            warn "On Arch/Manjaro, ddcui may not be in official repositories; it is skipped in this phase."
             ;;
         zypper)
             mandatory_packages=(ddcutil i2c-tools python3 python3-pip)
             optional_packages=(ddcui)
             ;;
         *)
-            warn "No se puede instalar automáticamente porque no se detectó apt, dnf, pacman ni zypper."
-            warn "Instala manualmente ddcutil, i2c-tools, python3, pip y venv."
+            warn "Cannot install automatically because apt, dnf, pacman, or zypper was not detected."
+            warn "Install manually ddcutil, i2c-tools, python3, pip y venv."
             ;;
     esac
 
     capture_initial_state "$pm" "${mandatory_packages[@]}" "${optional_packages[@]}"
 
     if [[ "$pm" != "unknown" ]]; then
-        echo "Paquetes obligatorios propuestos:"
+        echo "Proposed mandatory packages:"
         echo "  ${mandatory_packages[*]}"
-        install_packages_group "$pm" "Instalar paquetes obligatorios" "${mandatory_packages[@]}" || true
+        install_packages_group "$pm" "Install mandatory packages" "${mandatory_packages[@]}" || true
 
         if [[ "${#optional_packages[@]}" -gt 0 ]]; then
             echo
-            echo "Paquetes opcionales propuestos:"
+            echo "Proposed optional packages:"
             echo "  ${optional_packages[*]}"
             echo
-            echo "ddcui no es necesario para PlasmaDDC, pero sirve para probar DDC/CI con una interfaz gráfica existente."
+            echo "ddcui is not required for PlasmaDDC, but it is useful to test DDC/CI with an existing graphical interface."
 
-            if ask_yes_no "¿Quieres intentar instalar también los paquetes opcionales?"; then
-                install_packages_group "$pm" "Instalar paquetes opcionales" "${optional_packages[@]}" || true
+            if ask_yes_no "Do you want to try installing optional packages too?"; then
+                install_packages_group "$pm" "Install optional packages" "${optional_packages[@]}" || true
             else
-                warn "Paquetes opcionales omitidos."
+                warn "Optional packages skipped."
             fi
         fi
     fi
 
-    title "3. Comprobación de dispositivos I2C"
+    title "3. I2C device check"
 
     check_i2c_devices || true
 
-    title "4. Prueba de detección de monitor con ddcutil"
+    title "4. Monitor detection test with ddcutil"
 
     local detect_result=0
     try_ddcutil_detect
@@ -841,11 +841,11 @@ main() {
         show_ddc_capabilities "yes"
     elif [[ "$detect_result" -eq 1 ]]; then
         echo
-        echo "No se ha confirmado que el monitor responda a DDC/CI."
-        echo "Puedes parar ahora y revisar el OSD del monitor, cable, adaptadores o drivers."
+        echo "It has not been confirmed that the monitor responds to DDC/CI."
+        echo "You can stop now and check the monitor OSD, cable, adapters, or drivers."
 
-        if ! ask_yes_no "¿Quieres continuar igualmente con la preparación de permisos y Python?"; then
-            warn "Instalación detenida por el usuario."
+        if ! ask_yes_no "Do you want to continue with permissions and Python preparation anyway?"; then
+            warn "Installation stopped by user."
             capture_final_state "$pm" "${mandatory_packages[@]}" "${optional_packages[@]}"
             show_summary
             exit 1

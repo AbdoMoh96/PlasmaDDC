@@ -8,13 +8,13 @@ APP_FILE="$SCRIPT_DIR/app.py"
 cd "$SCRIPT_DIR"
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
-    echo "No existe el entorno virtual de PlasmaDDC:"
+    echo "The PlasmaDDC virtual environment does not exist:"
     echo "  $SCRIPT_DIR/.venv"
     echo
-    echo "Ejecuta primero:"
+    echo "Run this first:"
     echo "  ./install_plasmaddc.sh"
     echo
-    echo "O crea el entorno manualmente:"
+    echo "Or create the environment manually:"
     echo "  python3 -m venv .venv"
     echo "  source .venv/bin/activate"
     echo "  pip install -r requirements.txt"
@@ -22,7 +22,7 @@ if [[ ! -x "$VENV_PYTHON" ]]; then
 fi
 
 if [[ ! -f "$APP_FILE" ]]; then
-    echo "No se encuentra app.py en:"
+    echo "app.py was not found in:"
     echo "  $SCRIPT_DIR"
     exit 1
 fi

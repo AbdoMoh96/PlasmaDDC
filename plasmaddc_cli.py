@@ -24,38 +24,22 @@ APP_NAME = "PlasmaDDC CLI"
 
 CONTROL_ALIASES = {
     "brightness": "brightness",
-    "brillo": "brightness",
-
     "contrast": "contrast",
-    "contraste": "contrast",
-
     "volume": "volume",
-    "volumen": "volume",
     "audio": "volume",
-
     "input": "input_source",
     "source": "input_source",
-    "entrada": "input_source",
     "input-source": "input_source",
-
     "color": "color_preset",
     "preset": "color_preset",
     "color-preset": "color_preset",
-    "temperatura": "color_preset",
     "temperature": "color_preset",
-
     "red": "red_gain",
-    "rojo": "red_gain",
     "r": "red_gain",
-
     "green": "green_gain",
-    "verde": "green_gain",
     "g": "green_gain",
-
     "blue": "blue_gain",
-    "azul": "blue_gain",
     "b": "blue_gain",
-
     "rgb": "rgb",
 }
 
@@ -67,21 +51,21 @@ def die(message: str, code: int = 1) -> NoReturn:
 
 def human_monitor_to_index(value: int) -> int:
     if value < 1:
-        raise argparse.ArgumentTypeError("El monitor debe ser 1, 2, 3...")
+        raise argparse.ArgumentTypeError("Monitor must be 1, 2, 3...")
     return value - 1
 
 
 def ask_confirmation(question: str) -> bool:
     while True:
-        answer = input(f"{question} [s/N]: ").strip().lower()
+        answer = input(f"{question} [y/N]: ").strip().lower()
 
-        if answer in ("s", "si", "sí", "y", "yes"):
+        if answer in ("y", "yes"):
             return True
 
         if answer in ("", "n", "no"):
             return False
 
-        print("Responde s o n.")
+        print("Answer y or n.")
 
 
 def normalize_control(name: str) -> str:
@@ -89,7 +73,7 @@ def normalize_control(name: str) -> str:
 
     if key not in CONTROL_ALIASES:
         valid = ", ".join(sorted(CONTROL_ALIASES))
-        raise ValueError(f"Control no reconocido: {name}. Válidos: {valid}")
+        raise ValueError(f"Unknown control: {name}. Valid: {valid}")
 
     return CONTROL_ALIASES[key]
 
@@ -120,7 +104,7 @@ def print_vcp(value: VCPValue, prefix: str = "") -> None:
         print(f"{prefix}{value.code_hex} {name}: {value.label}")
         return
 
-    print(f"{prefix}{value.code_hex} {name}: sin valor interpretado")
+    print(f"{prefix}{value.code_hex} {name}: no interpreted value")
 
 
 def print_monitor_header(index: int, label: str) -> None:
@@ -138,14 +122,14 @@ def cmd_list(args: argparse.Namespace) -> int:
     monitors = backend.refresh_monitors()
 
     if not monitors:
-        print("No se han detectado monitores.")
+        print("No monitors detected.")
         return 1
 
-    print(f"Monitores detectados: {len(monitors)}")
+    print(f"Detected monitors: {len(monitors)}")
 
     for monitor in monitors:
         print_monitor_header(monitor.index, monitor.label)
-        print(f"Índice CLI:       {monitor.index + 1}")
+        print(f"CLI index:       {monitor.index + 1}")
         print(f"display_number:   {monitor.display_number}")
         print(f"bus_number:       {monitor.bus_number}")
         print(f"bus_path:         {monitor.bus_path}")
@@ -166,18 +150,18 @@ def cmd_profile(args: argparse.Namespace) -> int:
     print_monitor_header(profile.monitor.index, profile.monitor.label)
 
     if profile.values:
-        print("Valores comunes:")
+        print("Common values:")
         for key in COMMON_VCPS:
             value = profile.values.get(key)
             if value is not None:
                 print(f"  {key:14s}", end="")
                 print_vcp(value, prefix=" ")
             elif key in profile.errors:
-                print(f"  {key:14s} no disponible: {profile.errors[key]}")
+                print(f"  {key:14s} unavailable: {profile.errors[key]}")
 
     if profile.errors:
         print()
-        print("Errores/no disponibles:")
+        print("Errores/unavailables:")
         for key, message in profile.errors.items():
             print(f"  {key}: {message}")
 
@@ -216,7 +200,7 @@ def read_control(backend: PlasmaDDCBackend, monitor: int, control: str) -> list[
             backend.get_rgb_gain(monitor, "blue"),
         ]
 
-    raise ValueError(f"Control no soportado: {control}")
+    raise ValueError(f"Control unsupported: {control}")
 
 
 def cmd_get(args: argparse.Namespace) -> int:
@@ -230,10 +214,10 @@ def cmd_get(args: argparse.Namespace) -> int:
         print_vcp(value)
 
         if value.code == COMMON_VCPS["input_source"] and value.selector is not None:
-            print(f"Etiqueta normalizada: {input_source_label(value.selector)}")
+            print(f"Normalized label: {input_source_label(value.selector)}")
 
         if value.code == COMMON_VCPS["color_preset"] and value.selector is not None:
-            print(f"Etiqueta normalizada: {color_preset_label(value.selector)}")
+            print(f"Normalized label: {color_preset_label(value.selector)}")
 
     return 0
 
@@ -246,7 +230,7 @@ def cmd_set(args: argparse.Namespace) -> int:
     value = args.value
 
     if control == "rgb":
-        die("Para cambiar RGB usa red, green o blue por separado.")
+        die("To change RGB, use red, green, or blue separately.")
 
     if control == "brightness":
         result = backend.set_brightness(args.monitor, int(value))
@@ -265,22 +249,22 @@ def cmd_set(args: argparse.Namespace) -> int:
     elif control == "input_source":
         raw_input = input_source_to_int(value)
 
-        print("AVISO: vas a cambiar la entrada de vídeo del monitor.")
-        print(f"Destino solicitado: {value} / 0x{raw_input:02X} / {input_source_label(raw_input)}")
-        print("Si eliges una entrada sin señal, puedes perder imagen hasta volver a cambiarla desde el OSD del monitor.")
+        print("WARNING: you are about to change the monitor video input.")
+        print(f"Requested target: {value} / 0x{raw_input:02X} / {input_source_label(raw_input)}")
+        print("If you choose an input without signal, you may lose the picture until you switch it back from the monitor OSD.")
 
-        if not args.yes and not ask_confirmation("¿Continuar con el cambio de entrada?"):
-            print("Operación cancelada.")
+        if not args.yes and not ask_confirmation("Continue with the input switch?"):
+            print("Operation cancelled.")
             return 1
 
         result = backend.set_input_source(args.monitor, raw_input)
     else:
-        raise ValueError(f"Control no soportado para set: {control}")
+        raise ValueError(f"Control unsupported for set: {control}")
 
     if result:
         print(result)
     else:
-        print("Operación completada.")
+        print("Operation completed.")
 
     return 0
 
@@ -310,7 +294,7 @@ def cmd_getvcp(args: argparse.Namespace) -> int:
 
     if args.raw:
         print()
-        print("Salida raw:")
+        print("Raw output:")
         print(value.raw_output)
 
     return 0
@@ -323,16 +307,16 @@ def cmd_setvcp(args: argparse.Namespace) -> int:
     code = normalize_vcp_code(args.code)
     code_text = format_vcp_code(code)
 
-    print("AVISO: vas a escribir directamente un código VCP.")
-    print(f"Código: {code_text}")
-    print(f"Valor:  {args.value}")
-    print("Esto puede cambiar ajustes internos del monitor.")
+    print("WARNING: you are about to write a VCP code directly.")
+    print(f"Code: {code_text}")
+    print(f"Value:  {args.value}")
+    print("This may change internal monitor settings.")
 
     if code == COMMON_VCPS["input_source"]:
-        print("Este VCP es Input Source. Puede dejarte sin imagen si eliges una entrada sin señal.")
+        print("This VCP is Input Source. You may lose the picture if you choose an input without signal.")
 
-    if not args.yes and not ask_confirmation("¿Continuar con setvcp?"):
-        print("Operación cancelada.")
+    if not args.yes and not ask_confirmation("Continue with setvcp?"):
+        print("Operation cancelled.")
         return 1
 
     result = backend.set_vcp(
@@ -346,13 +330,13 @@ def cmd_setvcp(args: argparse.Namespace) -> int:
     if result:
         print(result)
     else:
-        print("Operación completada.")
+        print("Operation completed.")
 
     return 0
 
 
 def cmd_inputs(args: argparse.Namespace) -> int:
-    print("Entradas comunes conocidas:")
+    print("Known common inputs:")
     print()
 
     seen: set[int] = set()
@@ -364,12 +348,12 @@ def cmd_inputs(args: argparse.Namespace) -> int:
         print(f"0x{value:02X}  {input_source_label(value)}")
 
     print()
-    print("También puedes usar alias como HDMI1, HDMI2, DP1, DP2.")
+    print("You can also use aliases such as HDMI1, HDMI2, DP1, DP2.")
     return 0
 
 
 def cmd_presets(args: argparse.Namespace) -> int:
-    print("Presets de color comunes:")
+    print("Common color presets:")
     print()
     for value in sorted(range(1, 14)):
         print(f"0x{value:02X}  {color_preset_label(value)}")
@@ -379,7 +363,7 @@ def cmd_presets(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plasmaddc_cli.py",
-        description="CLI de pruebas para PlasmaDDC.",
+        description="Test CLI for PlasmaDDC.",
     )
 
     parser.add_argument(
@@ -388,7 +372,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=human_monitor_to_index,
         default=0,
         metavar="N",
-        help="Monitor a usar, empezando en 1. Por defecto: 1.",
+        help="Monitor to use, starting at 1. Default: 1.",
     )
 
     subparsers = parser.add_subparsers(
@@ -398,19 +382,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list = subparsers.add_parser(
         "list",
-        help="Listar monitores detectados.",
+        help="List detected monitors.",
     )
     p_list.set_defaults(func=cmd_list)
 
     p_profile = subparsers.add_parser(
         "profile",
-        help="Mostrar perfil resumido del monitor.",
+        help="Show a summarized monitor profile.",
     )
     p_profile.set_defaults(func=cmd_profile)
 
     p_get = subparsers.add_parser(
         "get",
-        help="Leer un control conocido.",
+        help="Read a known control.",
     )
     p_get.add_argument(
         "control",
@@ -420,7 +404,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_set = subparsers.add_parser(
         "set",
-        help="Cambiar un control conocido.",
+        help="Change a known control.",
     )
     p_set.add_argument(
         "control",
@@ -428,82 +412,82 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_set.add_argument(
         "value",
-        help="Valor a escribir. Ejemplo: 70, HDMI1, 0x11, 0x05.",
+        help="Value to write. Example: 70, HDMI1, 0x11, 0x05.",
     )
     p_set.add_argument(
         "-y",
         "--yes",
         action="store_true",
-        help="No pedir confirmación en operaciones delicadas.",
+        help="Do not ask for confirmation for delicate operations.",
     )
     p_set.set_defaults(func=cmd_set)
 
     p_caps = subparsers.add_parser(
         "capabilities",
-        help="Mostrar ddcutil capabilities del monitor.",
+        help="Show monitor ddcutil capabilities.",
     )
     p_caps.set_defaults(func=cmd_capabilities)
 
     p_all = subparsers.add_parser(
         "getvcp-all",
-        help="Mostrar ddcutil getvcp all del monitor.",
+        help="Show monitor ddcutil getvcp all.",
     )
     p_all.set_defaults(func=cmd_getvcp_all)
 
     p_getvcp = subparsers.add_parser(
         "getvcp",
-        help="Leer un VCP crudo.",
+        help="Read a raw VCP.",
     )
     p_getvcp.add_argument(
         "code",
-        help="Código VCP hexadecimal. Ejemplo: 10, 0x10, 1A.",
+        help="Code VCP hexadecimal. Ejemplo: 10, 0x10, 1A.",
     )
     p_getvcp.add_argument(
         "--raw",
         action="store_true",
-        help="Mostrar también la salida cruda de ddcutil.",
+        help="Also show raw ddcutil output.",
     )
     p_getvcp.set_defaults(func=cmd_getvcp)
 
     p_setvcp = subparsers.add_parser(
         "setvcp",
-        help="Escribir un VCP crudo.",
+        help="Write a raw VCP.",
     )
     p_setvcp.add_argument(
         "code",
-        help="Código VCP hexadecimal. Ejemplo: 10, 0x10, 1A.",
+        help="Code VCP hexadecimal. Ejemplo: 10, 0x10, 1A.",
     )
     p_setvcp.add_argument(
         "value",
-        help="Valor a escribir.",
+        help="Value to write.",
     )
     p_setvcp.add_argument(
         "--no-verify",
         action="store_true",
-        help="Usar --noverify en ddcutil.",
+        help="Use --noverify in ddcutil.",
     )
     p_setvcp.add_argument(
         "--permit-unknown",
         action="store_true",
-        help="Usar --permit-unknown-feature en ddcutil.",
+        help="Use --permit-unknown-feature in ddcutil.",
     )
     p_setvcp.add_argument(
         "-y",
         "--yes",
         action="store_true",
-        help="No pedir confirmación.",
+        help="Do not ask for confirmation.",
     )
     p_setvcp.set_defaults(func=cmd_setvcp)
 
     p_inputs = subparsers.add_parser(
         "inputs",
-        help="Mostrar códigos habituales de entrada de vídeo.",
+        help="Show common video input codes.",
     )
     p_inputs.set_defaults(func=cmd_inputs)
 
     p_presets = subparsers.add_parser(
         "presets",
-        help="Mostrar presets de color comunes.",
+        help="Show common color presets.",
     )
     p_presets.set_defaults(func=cmd_presets)
 
@@ -518,7 +502,7 @@ def main(argv: list[str] | None = None) -> int:
         return int(args.func(args))
     except KeyboardInterrupt:
         print()
-        print("Cancelado por el usuario.")
+        print("Cancelled by user.")
         return 130
     except PlasmaDDCError as exc:
         die(str(exc))

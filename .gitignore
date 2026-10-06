@@ -25,7 +25,7 @@ install.log
 .vscode/
 .idea/
 
-# Cachés herramientas Python
+# Python tool caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
